@@ -21,10 +21,16 @@ var (
 	browser *rod.Browser
 )
 
-const port = "9222"
+func getPort() string {
+	if port := os.Getenv("CODEL_BROWSER_PORT"); port != "" {
+		return port
+	}
+	return "9222"
+}
 
 func InitBrowser(db *database.Queries) error {
 	browserContainerName := BrowserName()
+	port := getPort()
 	portBinding := nat.Port(fmt.Sprintf("%s/tcp", port))
 
 	_, err := SpawnContainer(context.Background(), browserContainerName, &container.Config{
