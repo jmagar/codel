@@ -7,7 +7,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/go-connections/nat"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -30,10 +32,29 @@ func getPort() string {
 
 func InitBrowser(db *database.Queries) error {
 	browserContainerName := BrowserName()
+
+	// Check if container already exists
+	f := filters.NewArgs()
+	f.Add("name", browserContainerName)
+	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{
+		All:     true,
+		Filters: f,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	// If container exists, just return
+	if len(containers) > 0 {
+		log.Printf("Browser container %s already exists", browserContainerName)
+		return nil
+	}
+
+	// Create container if it doesn't exist
 	port := getPort()
 	portBinding := nat.Port(fmt.Sprintf("%s/tcp", port))
 
-	_, err := SpawnContainer(context.Background(), browserContainerName, &container.Config{
+	_, err = SpawnContainer(context.Background(), browserContainerName, &container.Config{
 		Image: "ghcr.io/go-rod/rod",
 		ExposedPorts: nat.PortSet{
 			portBinding: struct{}{},
